@@ -78,7 +78,10 @@ Kubernetes (k8s), Infrastructure as Code, service monitoring & alerting.
 
 ---
 
-## ⭐ Stargazer Log
-<!-- STARS-LOG:START -->
-No stars yet — be the first to get a shout-out! ✨
-<!-- STARS-LOG:END -->
+## ⭐ Stargazer Wall
+
+<p align="left">
+<!-- STARS-WALL:START -->
+<!-- STARS-WALL:END -->
+</p>
+
