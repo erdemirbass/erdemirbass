@@ -82,7 +82,10 @@ jobs:
           PY
 
       - name: Commit & Push Changes
+        shell: bash
         run: |
+          set -e
+          git status
           if ! git diff --quiet; then
             git config user.name "star-bot"
             git config user.email "star-bot@users.noreply.github.com"
@@ -91,3 +94,5 @@ jobs:
             git push
           else
             echo "[dbg] No changes to commit"
+          fi
+
