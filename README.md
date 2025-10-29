@@ -41,10 +41,11 @@ Always eager to learn, build and deliver!
 ---
 
 ## 📌 Featured Projects
-- 🛰️ Landslide Detection (ML)
-- 🌱 Soil Erosion Early Warning (AI)
+- 🛰️ Scalable CI/CD Pipeline for Microservices Application
+- 🌱 Infrastructure‑as‑Code for Multi‑Environment Deployment
 - 🔁 Microservices CI/CD Pipeline (Docker + GitHub Actions + Security scan)
-- 💬 Simple ChatBot (NLP)
+- 💬 Cloud Monitoring & Alerting Platform
+- 🛰️ Landslide Detection Using Machine Learning
 
 ---
 
