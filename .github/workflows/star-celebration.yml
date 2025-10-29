@@ -3,6 +3,7 @@ name: Stargazer Celebration
 on:
   watch:
     types: [started]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -17,7 +18,12 @@ jobs:
       - name: Extract event data
         id: evt
         run: |
-          echo "login=$(jq -r '.sender.login' $GITHUB_EVENT_PATH)" >> $GITHUB_OUTPUT
+          LOGIN=$(jq -r '.sender.login' $GITHUB_EVENT_PATH)
+          if [ "$LOGIN" = "null" ] || [ -z "$LOGIN" ]; then
+            LOGIN="${GITHUB_ACTOR}"
+          fi
+          echo "login=$LOGIN" >> $GITHUB_OUTPUT
+          
           echo "stars=$(curl -s https://api.github.com/repos/${GITHUB_REPOSITORY} | jq -r .stargazers_count)" >> $GITHUB_OUTPUT
 
       - name: Update README
@@ -57,7 +63,6 @@ jobs:
             return f"{start}\n" + "\n".join(lines[:200]) + f"\n{end}"
 
           new_content = pattern.sub(replace, content)
-
           readme_path.write_text(new_content, encoding="utf-8")
           PY
 
