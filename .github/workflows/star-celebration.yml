@@ -75,8 +75,7 @@ jobs:
             body = m.group(1).strip()
             existing = re.findall(r'<a href="https://github\.com/[^"]+">.*?</a>', body)
             # remove duplicate of same user, then prepend new one
-            existing = [b for b in existing if f'href="https://github.com/{login}"' not in b]
-            wall = " ".join([badge] + existing[:59])  # keep up to 60 badges
+            wall = " ".join([badge] + existing)[:5000]
             return f"{start}\n{wall}\n{end}"
 
           updated = pattern.sub(insert, readme)
