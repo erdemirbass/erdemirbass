@@ -1,4 +1,4 @@
-name: Stargazer Celebration
+name: Stargazer Wall
 
 on:
   watch:
@@ -9,88 +9,85 @@ permissions:
   contents: write
 
 jobs:
-  celebrate:
+  update-wall:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract event data (pure Python)
-        id: evt
+      - name: Debug & Pre-check README
         run: |
-          python3 - <<'PY'
-          import json, os, urllib.request, sys
+          echo "[dbg] Actor: $GITHUB_ACTOR"
+          echo "[dbg] Repo: $GITHUB_REPOSITORY"
+          grep -q "<!-- STARS-WALL:START -->" README.md && echo "[dbg] Start marker ✅" || (echo "::error::Start marker missing ❌"; exit 1)
+          grep -q "<!-- STARS-WALL:END -->" README.md && echo "[dbg] End marker ✅" || (echo "::error::End marker missing ❌"; exit 1)
 
-          event_path = os.environ.get("GITHUB_EVENT_PATH")
-          actor = os.environ.get("GITHUB_ACTOR", "someone")
-          repo  = os.environ.get("GITHUB_REPOSITORY")
-
-          login = actor  # fallback default
-          try:
-            with open(event_path, "r", encoding="utf-8") as f:
-              data = json.load(f)
-            # for 'watch' events
-            login = (data.get("sender", {}) or {}).get("login") or actor
-          except Exception:
-            pass
-
-          # get current star count from API
-          try:
-            with urllib.request.urlopen(f"https://api.github.com/repos/{repo}") as resp:
-              repo_info = json.load(resp)
-              stars = int(repo_info.get("stargazers_count", 0))
-          except Exception:
-            stars = 0
-
-          # write outputs
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-            out.write(f"login={login}\n")
-            out.write(f"stars={stars}\n")
-          PY
-
-      - name: Update README (badge wall - full list)
+      - name: Fetch stargazers & Update Wall
         env:
           REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 - <<'PY'
-          import os, urllib.request, json, pathlib, re, html, random
+          import os, urllib.request, json, pathlib, re, html, random, sys
 
           repo = os.environ["REPO"]
-          print("[dbg] Fetching full stargazers list...")
 
+          print("[dbg] Fetching stargazers list...")
           req = urllib.request.Request(
               f"https://api.github.com/repos/{repo}/stargazers",
-              headers={"Accept": "application/vnd.github.v3+json"}
+              headers={
+                  "Accept": "application/vnd.github.v3+json",
+                  "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
+                  "User-Agent": "star-wall-bot"
+              }
           )
-          with urllib.request.urlopen(req) as resp:
-            data = json.load(resp)
+          try:
+            with urllib.request.urlopen(req) as resp:
+              data = json.load(resp)
+              print(f"[dbg] Found {len(data)} stargazers ⭐")
+          except Exception as e:
+            print(f"::error::API fetch failed: {e}")
+            sys.exit(1)
 
-          # turn logins into badges
           colors = ["181717","0E75B6","2E7D32","6A1B9A","1565C0","D81B60","F57C00","455A64"]
           badges = []
           for user in data:
-            login = user["login"]
+            login = user.get("login","unknown")
             color = random.choice(colors)
-            badge = (
+            badges.append(
               f'<a href="https://github.com/{html.escape(login)}" title="@{html.escape(login)}">'
               f'<img src="https://img.shields.io/badge/@{html.escape(login)}-{color}?style=for-the-badge&logo=github&logoColor=white" /></a>'
             )
-            badges.append(badge)
 
-          p = pathlib.Path("README.md")
-          content = p.read_text(encoding="utf-8")
+          wall_html = " ".join(badges[:120])  # First 120 users safe
+
+          readme_path = pathlib.Path("README.md")
+          content = readme_path.read_text(encoding="utf-8")
 
           start = "<!-- STARS-WALL:START -->"
           end = "<!-- STARS-WALL:END -->"
           pattern = re.compile(re.escape(start) + r"(.*?)" + re.escape(end), re.S)
 
-          wall = " ".join(badges[:100])  # keep first 100
+          def repl(m):
+            return f"{start}\n{wall_html}\n{end}"
 
-          def replace(m):
-            return f"{start}\n{wall}\n{end}"
+          updated = pattern.sub(repl, content)
 
-          updated = pattern.sub(replace, content)
-          p.write_text(updated, encoding="utf-8")
+          if updated == content:
+            print("::warning::README unchanged (no update)")
+          else:
+            readme_path.write_text(updated, encoding="utf-8")
+            print("[dbg] README updated ✅")
 
-          print("[dbg] Wall updated successfully ✅")
           PY
+
+      - name: Commit & Push Changes
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "star-bot"
+            git config user.email "star-bot@users.noreply.github.com"
+            git add README.md
+            git commit -m "⭐ Update Stargazer Wall"
+            git push
+          else
+            echo "[dbg] No changes to commit"
