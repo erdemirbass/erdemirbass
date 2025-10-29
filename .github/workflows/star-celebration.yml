@@ -15,15 +15,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract event data
+      - name: Extract event data (pure Python)
         id: evt
         run: |
-          LOGIN=$(jq -r '.sender.login' $GITHUB_EVENT_PATH)
-          if [ "$LOGIN" = "null" ] || [ -z "$LOGIN" ]; then
-            LOGIN="${GITHUB_ACTOR}"
-          fi
-          echo "login=$LOGIN" >> $GITHUB_OUTPUT
-          echo "stars=$(curl -s https://api.github.com/repos/${GITHUB_REPOSITORY} | jq -r .stargazers_count)" >> $GITHUB_OUTPUT
+          python3 - <<'PY'
+          import json, os, urllib.request, sys
+
+          event_path = os.environ.get("GITHUB_EVENT_PATH")
+          actor = os.environ.get("GITHUB_ACTOR", "someone")
+          repo  = os.environ.get("GITHUB_REPOSITORY")
+
+          login = actor  # fallback default
+          try:
+            with open(event_path, "r", encoding="utf-8") as f:
+              data = json.load(f)
+            # for 'watch' events
+            login = (data.get("sender", {}) or {}).get("login") or actor
+          except Exception:
+            pass
+
+          # get current star count from API
+          try:
+            with urllib.request.urlopen(f"https://api.github.com/repos/{repo}") as resp:
+              repo_info = json.load(resp)
+              stars = int(repo_info.get("stargazers_count", 0))
+          except Exception:
+            stars = 0
+
+          # write outputs
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+            out.write(f"login={login}\n")
+            out.write(f"stars={stars}\n")
+          PY
 
       - name: Update README (badge wall)
         env:
@@ -33,10 +56,8 @@ jobs:
           python3 - <<'PY'
           import os, re, pathlib, random, html
 
-          login = os.environ["LOGIN"]
-          stars = int(os.environ["STARS"])
-
-          # Badge "pill" for the user who starred
+          login = os.environ["LOGIN"] or "someone"
+          # build a colorful badge for the stargazer
           colors = ["181717","0E75B6","2E7D32","6A1B9A","1565C0","D81B60","F57C00","455A64"]
           color = random.choice(colors)
           badge = (
@@ -52,11 +73,10 @@ jobs:
 
           def insert(m):
             body = m.group(1).strip()
-            # mevcut badge'leri oku (satır veya boşluk fark etmez)
-            existing = [x for x in re.findall(r'<a href="https://github\.com/[^"]+">.*?</a>', body)]
-            # yeni geleni en başa ekle, tekrar varsa kaldırıp öne al
+            existing = re.findall(r'<a href="https://github\.com/[^"]+">.*?</a>', body)
+            # remove duplicate of same user, then prepend new one
             existing = [b for b in existing if f'href="https://github.com/{login}"' not in b]
-            wall = " ".join([badge] + existing[:59])  # en fazla 60 badge tut
+            wall = " ".join([badge] + existing[:59])  # keep up to 60 badges
             return f"{start}\n{wall}\n{end}"
 
           updated = pattern.sub(insert, readme)
