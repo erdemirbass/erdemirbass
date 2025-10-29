@@ -11,7 +11,7 @@
 
 I'm a Junior DevOps & Cloud Engineer passionate about automation, CI/CD pipelines, and scalable infrastructure on cloud ☁️  
 Always eager to learn, build and deliver!
-Thanks for visiting — I'd love to [connect](https://www.linkedin.com/in/erdemdemirbas35/?lipi=invite)! 😊
+Thanks for visiting and I'd love to [connect](https://www.linkedin.com/in/erdemdemirbas35/?lipi=invite)! 😊
 
 ---
 
