@@ -48,50 +48,49 @@ jobs:
             out.write(f"stars={stars}\n")
           PY
 
-      - name: Update README (badge wall)
+      - name: Update README (badge wall - full list)
         env:
-          LOGIN: ${{ steps.evt.outputs.login }}
-          STARS: ${{ steps.evt.outputs.stars }}
+          REPO: ${{ github.repository }}
         run: |
           python3 - <<'PY'
-          import os, re, pathlib, random, html
+          import os, urllib.request, json, pathlib, re, html, random
 
-          login = os.environ["LOGIN"] or "someone"
-          # build a colorful badge for the stargazer
-          colors = ["181717","0E75B6","2E7D32","6A1B9A","1565C0","D81B60","F57C00","455A64"]
-          color = random.choice(colors)
-          badge = (
-            f'<a href="https://github.com/{html.escape(login)}" title="@{html.escape(login)}">'
-            f'<img src="https://img.shields.io/badge/@{html.escape(login)}-{color}?style=for-the-badge&logo=github&logoColor=white" /></a>'
+          repo = os.environ["REPO"]
+          print("[dbg] Fetching full stargazers list...")
+
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/stargazers",
+              headers={"Accept": "application/vnd.github.v3+json"}
           )
+          with urllib.request.urlopen(req) as resp:
+            data = json.load(resp)
 
-          readme = pathlib.Path("README.md").read_text(encoding="utf-8")
+          # turn logins into badges
+          colors = ["181717","0E75B6","2E7D32","6A1B9A","1565C0","D81B60","F57C00","455A64"]
+          badges = []
+          for user in data:
+            login = user["login"]
+            color = random.choice(colors)
+            badge = (
+              f'<a href="https://github.com/{html.escape(login)}" title="@{html.escape(login)}">'
+              f'<img src="https://img.shields.io/badge/@{html.escape(login)}-{color}?style=for-the-badge&logo=github&logoColor=white" /></a>'
+            )
+            badges.append(badge)
+
+          p = pathlib.Path("README.md")
+          content = p.read_text(encoding="utf-8")
 
           start = "<!-- STARS-WALL:START -->"
           end = "<!-- STARS-WALL:END -->"
           pattern = re.compile(re.escape(start) + r"(.*?)" + re.escape(end), re.S)
 
-          def insert(m):
-            body = m.group(1).strip()
-            existing = re.findall(r'<a href="https://github\.com/[^"]+">.*?</a>', body)
-            # remove duplicate of same user, then prepend new one
-            wall = " ".join([badge] + existing)[:5000]
+          wall = " ".join(badges[:100])  # keep first 100
+
+          def replace(m):
             return f"{start}\n{wall}\n{end}"
 
-          updated = pattern.sub(insert, readme)
-          pathlib.Path("README.md").write_text(updated, encoding="utf-8")
-          PY
+          updated = pattern.sub(replace, content)
+          p.write_text(updated, encoding="utf-8")
 
-      - name: Commit & push
-        run: |
-          set -e
-          git status
-          if ! git diff --quiet; then
-            git config user.name  "star-bot"
-            git config user.email "star-bot@users.noreply.github.com"
-            git add README.md
-            git commit -m "Update stargazer wall"
-            git push
-          else
-            echo "No changes to commit."
-          fi
+          print("[dbg] Wall updated successfully ✅")
+          PY
