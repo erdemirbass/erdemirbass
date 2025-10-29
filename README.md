@@ -82,7 +82,7 @@ Kubernetes (k8s), Infrastructure as Code, service monitoring & alerting.
 
 <p align="left">
 <!-- STARS-WALL:START -->
-<a href="https://github.com/erdemirbass" title="@erdemirbass"><img src="https://img.shields.io/badge/@erdemirbass-F57C00?style=for-the-badge&logo=github&logoColor=white" /></a>
+<a href="https://github.com/yusufdanis" title="@yusufdanis"><img src="https://img.shields.io/badge/@yusufdanis-455A64?style=for-the-badge&logo=github&logoColor=white" /></a>
 <!-- STARS-WALL:END -->
 </p>
 
